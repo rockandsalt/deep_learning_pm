@@ -137,3 +137,5 @@ dmypy.json
     Blog
     About
 
+*.tiff
+*.tif
