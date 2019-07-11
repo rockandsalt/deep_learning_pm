@@ -32,8 +32,7 @@ def make_discriminator_model(isize, nc, ndf, n_extra_layers=0):
         csize = csize / 2
 
     model.add(layers.Conv3D(1, kernel_size=4, strides=1,
-                            padding="valid", use_bias=False))
-    model.add(layers.Activation("sigmoid"))
+                            padding="valid", use_bias=False, activation = 'sigmoid'))
 
     return model
 
@@ -46,7 +45,7 @@ def make_generator_model(isize, nz, nc, ngf, n_extra_layers=0):
         cngf = cngf * 2
         tisize = tisize * 2
 
-    input = [isize]*3 + [nz]
+    input = [1]*3 + [nz]
 
     model = tf.keras.Sequential()
     model.add(layers.Conv3DTranspose(cngf, kernel_size=4, strides=1,
@@ -71,7 +70,6 @@ def make_generator_model(isize, nz, nc, ngf, n_extra_layers=0):
         model.add(layers.ReLU())
 
     model.add(layers.Conv3DTranspose(nc, kernel_size=4,
-                                     strides=2, padding="same", use_bias=False))
-    model.add(layers.Activation("tanh"))
+                                     strides=2, padding="same", use_bias=False, activation = 'tanh'))
 
     return model
