@@ -23,9 +23,18 @@ if __name__  == "__main__":
     opt = parser.parse_args()
 
     img = ski.io.imread(opt.f)
+
+    left_over = np.array(img.shape) % opt.s
+    if(left_over[0] != 0):
+        img = img[0:-left_over[0],:,:]
+    if(left_over[1] != 0):
+        img = img[:,0:-left_over[1],:]
+    if(left_over[2] != 0):
+        img = img[:,:,0:-left_over[2]]
+    
     train_set = cubify(img, (opt.s,opt.s,opt.s))
 
     hf = h5py.File(opt.o, "w")
-    data_set = hf.create_dataset("data", data=train_set)
+    data_set = hf.create_dataset("data", data=train_set.astype(np.float64))
 
     hf.close()
