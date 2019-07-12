@@ -140,3 +140,5 @@ dmypy.json
 *.tiff
 *.tif
 *.hdf5
+
+/training_checkpoints
