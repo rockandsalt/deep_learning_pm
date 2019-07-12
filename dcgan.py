@@ -1,75 +1,87 @@
-import tensorflow as tf
-from tensorflow.keras import layers
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
 import numpy as np
-
 
 def make_discriminator_model(isize, nc, ndf, n_extra_layers=0):
     assert isize % 16 == 0, "isize has to be a multiple of 16"
-    input = [isize]*3 + [nc]
 
-    model = tf.keras.Sequential()
+    model = nn.Sequential(
+        nn.Conv3d(nc,ndf,4,2, padding = 1, bias=False),
+        nn.LeakyReLU(0.2, inplace=True)
+    )
 
-    model.add(layers.Conv3D(ndf, kernel_size=4, strides=2,
-                            padding="same", use_bias=False, input_shape=input))
-    model.add(layers.LeakyReLU(alpha=0.2))
-
-    csize, cndf = isize / 2, ndf
+    i, csize, cndf = 3, isize / 2, ndf
 
     for _ in range(n_extra_layers):
-        model.add(layers.Conv3D(cndf, kernel_size=3,
-                                strides=1, padding="same", use_bias=False))
-        model.add(layers.BatchNormalization())
-        model.add(layers.LeakyReLU(alpha=0.2))
+        model.add_module(str(i),
+                        nn.Conv3d(cndf, cndf, 3, 1, 1, bias=False))
+        model.add_module(str(i+1),
+                        nn.BatchNorm3d(cndf))
+        model.add_module(str(i+2),
+                        nn.LeakyReLU(0.2, inplace=True))
+        i += 3
 
     while csize > 4:
-        out_feat = cndf*2
-        model.add(layers.Conv3D(out_feat, kernel_size=4,
-                                strides=2, padding="same", use_bias=False))
-        model.add(layers.BatchNormalization())
-        model.add(layers.LeakyReLU(alpha=0.2))
-
+        in_feat = cndf
+        out_feat = cndf * 2
+        model.add_module(str(i),
+                        nn.Conv3d(in_feat, out_feat, 4, 2, 1, bias=False))
+        model.add_module(str(i+1),
+                        nn.BatchNorm3d(out_feat))
+        model.add_module(str(i+2),
+                        nn.LeakyReLU(0.2, inplace=True))
+        i+=3
         cndf = cndf * 2
         csize = csize / 2
 
-    model.add(layers.Conv3D(1, kernel_size=4, strides=1,
-                            padding="valid", use_bias=False, activation = 'sigmoid'))
+    # state size. K x 4 x 4 x 4
+    model.add_module(str(i),
+                    nn.Conv3d(cndf, 1, 4, 1, 0, bias=False))
+    model.add_module(str(i+1), nn.Sigmoid())
 
     return model
 
 
 def make_generator_model(isize, nz, nc, ngf, n_extra_layers=0):
     assert isize % 16 == 0, "isize has to be a multiple of 16"
-    cngf, tisize = ngf//2, 4
 
+    cngf, tisize = ngf//2, 4
     while tisize != isize:
         cngf = cngf * 2
         tisize = tisize * 2
 
-    input = [1]*3 + [nz]
+    model = nn.Sequential(
+        # input is Z, going into a convolution
+        nn.ConvTranspose3d(nz, cngf, 4, 1, 0, bias=False),
+        nn.BatchNorm3d(cngf),
+        nn.ReLU(True),
+    )
 
-    model = tf.keras.Sequential()
-    model.add(layers.Conv3DTranspose(cngf, kernel_size=4, strides=1,
-                                     padding="valid", use_bias=False, input_shape=input))
-    model.add(layers.BatchNormalization())
-    model.add(layers.ReLU())
-
-    csize, cndf = 4, cngf
+    i, csize = 3, 4
     while csize < isize//2:
-        model.add(layers.Conv3DTranspose(cngf // 2, kernel_size=4,
-                                         strides=2, padding="same", use_bias=False))
-        model.add(layers.BatchNormalization())
-        model.add(layers.ReLU())
-
+        model.add_module(str(i),
+            nn.ConvTranspose3d(cngf, cngf//2, 4, 2, 1, bias=False))
+        model.add_module(str(i+1),
+                        nn.BatchNorm3d(cngf//2))
+        model.add_module(str(i+2),
+                        nn.ReLU(True))
+        i += 3
         cngf = cngf // 2
         csize = csize * 2
 
+    # Extra layers
     for _ in range(n_extra_layers):
-        model.add(layers.Conv3D(cndf, kernel_size=3,
-                                strides=1, padding="same", use_bias=False))
-        model.add(layers.BatchNormalization())
-        model.add(layers.ReLU())
+        model.add_module(str(i),
+                        nn.Conv3d(cngf, cngf, 3, 1, 1, bias=False))
+        model.add_module(str(i+1),
+                        nn.BatchNorm3d(cngf))
+        model.add_module(str(i+2),
+                        nn.ReLU(True))
+        i += 3
 
-    model.add(layers.Conv3DTranspose(nc, kernel_size=4,
-                                     strides=2, padding="same", use_bias=False, activation = 'tanh'))
+    model.add_module(str(i),
+                    nn.ConvTranspose3d(cngf, nc, 4, 2, 1, bias=False))
+    model.add_module(str(i+1), nn.Tanh())
 
     return model
