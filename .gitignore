@@ -141,4 +141,6 @@ dmypy.json
 *.tif
 *.hdf5
 
+*.ini
+
 /training_checkpoints
