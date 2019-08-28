@@ -8,10 +8,10 @@ import torch.nn.functional as F
 class BasicBlock(nn.Module):
     def __init__(self, in_planes, out_planes, dropRate=0.0):
         super(BasicBlock, self).__init__()
-        self.bn1 = nn.BatchNorm3d(in_planes)
-        self.relu = nn.ReLU(inplace=True)
+        self.bn1 = nn.BatchNorm3d(in_planes).cuda()
+        self.relu = nn.ReLU(inplace=True).cuda()
         self.conv1 = nn.Conv3d(in_planes, out_planes, kernel_size=3, stride=1,
-                               padding=1, bias=False)
+                               padding=1, bias=False).cuda()
         self.droprate = dropRate
     def forward(self, x):
         out = self.conv1(self.relu(self.bn1(x)))
@@ -27,16 +27,16 @@ class DenseBlock(nn.Module):
         layers = []
         for i in range(nb_layers):
             layers.append(block(in_planes+i*growth_rate, growth_rate, dropRate))
-        return nn.Sequential(*layers)
+        return nn.Sequential(*layers).cuda()
     def forward(self, x):
         return self.layer(x)
 
 class DiscriminatorBlock(nn.Module):
     def __init__(self,in_channel,out_channel,k,s):
         super(DiscriminatorBlock,self).__init__()
-        self.conv1 = nn.Conv3d(in_channel,out_channel,kernel_size = k, stride = s)
-        self.bn1 = nn.BatchNorm3d(out_channel)
-        self.lrelu = nn.LeakyReLU()
+        self.conv1 = nn.Conv3d(in_channel,out_channel,kernel_size = k, stride = s).cuda()
+        self.bn1 = nn.BatchNorm3d(out_channel).cuda()
+        self.lrelu = nn.LeakyReLU().cuda()
 
     def forward(self,x):
         out = self.bn1(self.conv1(x))
@@ -52,7 +52,7 @@ class Generator(nn.Module):
 
         # 1st conv before any dense block
         self.conv1 = nn.Conv3d(1, d_in_planes, kernel_size=3, stride=1,
-                               padding=1, bias=False)
+                               padding=1, bias=False).cuda()
         
         self.list_dense_block = []
         self.list_compressor_block = []
@@ -68,19 +68,19 @@ class Generator(nn.Module):
                 c_in_planes = int(c_in_planes+u*growth_rate)
             else:
                 c_in_planes = int(c_in_planes+u*growth_rate+d_in_planes)
-                compressor = nn.Conv3d(c_in_planes,1,kernel_size =1 , stride= 1, padding= 1, bias= False)
+                compressor = nn.Conv3d(c_in_planes,1,kernel_size =1 , stride= 1, padding= 0, bias= False).cuda()
                 self.list_compressor_block.append(compressor)
         
-        self.recon = nn.Conv3d(c_in_planes, 1, kernel_size=1, stride=1, padding=0, bias=False)
+        self.recon = nn.Conv3d(c_in_planes+1, 1, kernel_size=1, stride=1, padding=0, bias=False).cuda()
 
     def forward(self, x):
         out = self.conv1(x)
 
         compressor_in = out
-
         for idx, cpr in enumerate(self.list_compressor_block):
             d_block = self.list_dense_block[idx]
             d_out = d_block(out)
+
             compressor_in = torch.cat([compressor_in, d_out], 1)
             out = cpr(compressor_in)
             
@@ -93,8 +93,8 @@ class Discriminator(nn.Module):
     def __init__(self):
         super(Discriminator, self).__init__()
 
-        self.conv1 = nn.Conv3d(1,64,kernel_size = 3, stride=1)
-        self.lrelu1 = nn.LeakyReLU()
+        self.conv1 = nn.Conv3d(1,64,kernel_size = 3, stride=1).cuda()
+        self.lrelu1 = nn.LeakyReLU().cuda()
 
         self.block1 = DiscriminatorBlock(64,64,3,2)
         self.block2 = DiscriminatorBlock(64,128,3,1)
@@ -103,10 +103,10 @@ class Discriminator(nn.Module):
         self.block5 = DiscriminatorBlock(256,256,3,2)
         self.block6 = DiscriminatorBlock(256,512,3,1)
         self.block7 = DiscriminatorBlock(512,512,3,2)
-        self.ada = nn.AdaptiveAvgPool3d(1)
-        self.Dense1 = nn.Conv3d(512,1024, kernel_size  =1 )
-        self.lrelu2 = nn.LeakyReLU()
-        self.Dense2 = nn.Conv3d(1024,1, kernel_size = 1)
+        self.ada = nn.AdaptiveAvgPool3d(1).cuda()
+        self.Dense1 = nn.Conv3d(512,1024, kernel_size  =1 ).cuda()
+        self.lrelu2 = nn.LeakyReLU().cuda()
+        self.Dense2 = nn.Conv3d(1024,1, kernel_size = 1).cuda()
 
     def forward(self, x):
         out = self.lrelu1(self.conv1(x))
