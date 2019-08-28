@@ -144,3 +144,4 @@ dmypy.json
 *.ini
 
 /training_checkpoints
+/training_curve
