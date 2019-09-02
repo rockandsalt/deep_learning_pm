@@ -86,8 +86,8 @@ class Generator(nn.Module):
             
         last_block = self.list_dense_block[-1]
         d_out = last_block(out)
-
-        return self.recon(torch.cat([compressor_in,d_out], 1))
+        out = self.recon(torch.cat([compressor_in,d_out], 1))
+        return F.tanh(out)
 
 class Discriminator(nn.Module):
     def __init__(self):
