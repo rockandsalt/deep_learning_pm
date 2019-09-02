@@ -32,9 +32,9 @@ class DenseBlock(nn.Module):
         return self.layer(x)
 
 class DiscriminatorBlock(nn.Module):
-    def __init__(self,in_channel,out_channel,k,s):
+    def __init__(self,in_channel,out_channel,k,s,p):
         super(DiscriminatorBlock,self).__init__()
-        self.conv1 = nn.Conv3d(in_channel,out_channel,kernel_size = k, stride = s).cuda()
+        self.conv1 = nn.Conv3d(in_channel,out_channel,kernel_size = k, stride = s, padding = p).cuda()
         self.bn1 = nn.BatchNorm3d(out_channel).cuda()
         self.lrelu = nn.LeakyReLU().cuda()
 
@@ -96,13 +96,13 @@ class Discriminator(nn.Module):
         self.conv1 = nn.Conv3d(1,64,kernel_size = 3, stride=1).cuda()
         self.lrelu1 = nn.LeakyReLU().cuda()
 
-        self.block1 = DiscriminatorBlock(64,64,3,2)
-        self.block2 = DiscriminatorBlock(64,128,3,1)
-        self.block3 = DiscriminatorBlock(128,128,3,2)
-        self.block4 = DiscriminatorBlock(128,256,3,1)
-        self.block5 = DiscriminatorBlock(256,256,3,2)
-        self.block6 = DiscriminatorBlock(256,512,3,1)
-        self.block7 = DiscriminatorBlock(512,512,3,2)
+        self.block1 = DiscriminatorBlock(64,64,3,2,1)
+        self.block2 = DiscriminatorBlock(64,128,3,1,1)
+        self.block3 = DiscriminatorBlock(128,128,3,2,1)
+        self.block4 = DiscriminatorBlock(128,256,3,1,1)
+        self.block5 = DiscriminatorBlock(256,256,3,2,1)
+        self.block6 = DiscriminatorBlock(256,512,3,1,1)
+        self.block7 = DiscriminatorBlock(512,512,3,2,1)
         self.ada = nn.AdaptiveAvgPool3d(1).cuda()
         self.Dense1 = nn.Conv3d(512,1024, kernel_size  =1 ).cuda()
         self.lrelu2 = nn.LeakyReLU().cuda()
@@ -134,4 +134,4 @@ class GeneratorLoss(nn.Module):
     def forward(self, out_labels, target_labels, out_images, target_images):
         adversarial_loss = self.d_loss(out_labels,target_labels)
         image_loss = self.mse_loss(out_images, target_images)
-        return image_loss + 0.001 * adversarial_loss
+        return image_loss - 0.001 * adversarial_loss
